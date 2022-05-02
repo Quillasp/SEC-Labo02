@@ -1,9 +1,10 @@
-use serde::{Serialize, Deserialize};
 use crate::connection::Connection;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
+use read_input::prelude::*;
 use strum::IntoEnumIterator;
-use strum_macros::{EnumString, EnumIter};
+use strum_macros::{EnumIter, EnumString};
 
 /// `Authenticate` enum is used to perform:
 /// -   User
@@ -18,13 +19,15 @@ pub enum Authenticate {
     #[strum(serialize = "Reset password", serialize = "3")]
     Reset,
     #[strum(serialize = "Exit", serialize = "4")]
-    Exit
+    Exit,
 }
 
 impl Authenticate {
     pub fn display() {
         let mut actions = Authenticate::iter();
-        for i in 1..=actions.len() { println!("{}.\t{:?}", i, actions.next().unwrap()); }
+        for i in 1..=actions.len() {
+            println!("{}.\t{:?}", i, actions.next().unwrap());
+        }
     }
 
     pub fn perform(&self, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
@@ -35,13 +38,17 @@ impl Authenticate {
             Authenticate::Register => Authenticate::register(connection),
             Authenticate::Reset => Authenticate::reset_password(connection),
             Authenticate::Exit => {
-                println!("Exiting..."); std::process::exit(0);
+                println!("Exiting...");
+                std::process::exit(0);
             }
         }
     }
 
     fn register(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-        Ok(()) // TODO
+        let email = input::<String>().msg("Enter your email: ").get();
+        let password = input::<String>().msg("Enter your password: ").get();
+
+        connection.send(&User { email, password })
     }
 
     fn authenticate(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
@@ -51,4 +58,10 @@ impl Authenticate {
     fn reset_password(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
         Ok(()) // TODO
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct User {
+    pub email: String,
+    pub password: String,
 }

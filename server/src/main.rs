@@ -1,22 +1,24 @@
+mod action;
 mod authentication;
 mod connection;
 mod database;
-mod action;
 mod mailer;
 
 #[macro_use]
 extern crate lazy_static;
 
+use crate::action::Action;
+use crate::authentication::Authenticate;
+use crate::connection::Connection;
 use std::net::TcpListener;
 use std::thread;
-use crate::action::Action;
-use crate::connection::Connection;
-use crate::authentication::Authenticate;
 
 fn handle_client(mut connection: Connection) {
     loop {
         match Authenticate::perform(&mut connection) {
-            Ok(Some(mut user)) => while let Ok(true) = Action::perform(&mut user, &mut connection) {},
+            Ok(Some(mut user)) => {
+                while let Ok(true) = Action::perform(&mut user, &mut connection) {}
+            }
             Err(_) => return,
             _ => {}
         }
@@ -32,8 +34,14 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => { thread::spawn(move || { handle_client(Connection::new(stream)); }); },
-            Err(e) => { println!("Connection failed with error: {}", e); }
+            Ok(stream) => {
+                thread::spawn(move || {
+                    handle_client(Connection::new(stream));
+                });
+            }
+            Err(e) => {
+                println!("Connection failed with error: {}", e);
+            }
         }
     }
 

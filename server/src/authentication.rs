@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
-use crate::connection::Connection;
+use crate::{connection::Connection, database::Database};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 /// `Authenticate` enum is used to perform:
@@ -11,7 +11,7 @@ pub enum Authenticate {
     Authenticate,
     Register,
     Reset,
-    Exit
+    Exit,
 }
 
 impl Authenticate {
@@ -20,12 +20,13 @@ impl Authenticate {
             Authenticate::Authenticate => Authenticate::authenticate(connection),
             Authenticate::Register => Authenticate::register(connection),
             Authenticate::Reset => Authenticate::reset_password(connection),
-            Authenticate::Exit => Err("Client disconnected")?
+            Authenticate::Exit => Err("Client disconnected")?,
         }
     }
 
     fn register(connection: &mut Connection) -> Result<Option<User>, Box<dyn Error>> {
-        Ok(None) // TODO
+        let user: User = connection.receive()?;
+        Database::insert(&user).map(|_| Some(user))
     }
 
     fn reset_password(connection: &mut Connection) -> Result<Option<User>, Box<dyn Error>> {
@@ -40,5 +41,5 @@ impl Authenticate {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
     pub email: String,
-    // TODO
+    pub password: String,
 }
