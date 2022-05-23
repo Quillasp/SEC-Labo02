@@ -52,7 +52,18 @@ impl Authenticate {
         let email = input::<Email>().msg("Enter your email: ").get();
         let password = input::<Password>().msg("Enter your password: ").get();
 
-        println!("{:?}", ykey);
+        println!(
+            "YubiKey Serial : {:?}, version {:?}",
+            ykey.serial(),
+            ykey.version()
+        );
+
+        let yubikey_pub_info = match Yubi::generate() {
+            Ok(y) => y,
+            Err(e) => return Err(Box::new(e)),
+        };
+
+        println!("YubiKey Public Info : {:?}", yubikey_pub_info);
 
         connection.send(&User {
             email,

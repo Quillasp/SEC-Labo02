@@ -5,7 +5,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 lazy_static! {
-    static ref PASSWORD_RULE: Regex = Regex::new(r"").unwrap();
+    static ref PASSWORD_RULE: Regex = Regex::new(r"^[a-zA-Z0-9]{8,64}$").unwrap();
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]

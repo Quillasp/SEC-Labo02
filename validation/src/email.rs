@@ -5,7 +5,10 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 lazy_static! {
-    static ref EMAIL_RULE: Regex = Regex::new(r"").unwrap();
+    static ref EMAIL_RULE: Regex = Regex::new(
+        r"^[a-zA-Z0-9_+&*-]+(\.[a-zA-Z0-9_+&*-]+)*@([a-zA-Z0-9_+&*-]+\.)+[a-zA-Z]{2,7}$"
+    )
+    .unwrap();
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]

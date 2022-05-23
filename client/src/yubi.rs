@@ -20,12 +20,23 @@ impl Yubi {
     }
 
     // TODO
-    pub fn info() -> Serial {
-        Yubi::auto_yk().unwrap().serial()
+    pub fn info() -> YubiKey {
+        Yubi::auto_yk().unwrap()
     }
 
     pub fn generate() -> Result<PublicKeyInfo> {
-        let yubikey = Yubi::auto_yk().unwrap();
-        // yubikey::piv::generate(&mut yubikey, slot, algorithm, pin_policy, touch_policy)
+        let mut yubikey = Yubi::auto_yk().unwrap();
+        let slot_id = yubikey::piv::SlotId::Authentication;
+        let algorithm_id = yubikey::piv::AlgorithmId::EccP256;
+        let pin_policy = yubikey::PinPolicy::Once;
+        let touch_policy = yubikey::TouchPolicy::Never;
+
+        yubikey::piv::generate(
+            &mut yubikey,
+            slot_id,
+            algorithm_id,
+            pin_policy,
+            touch_policy,
+        )
     }
 }
