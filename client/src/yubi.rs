@@ -1,5 +1,6 @@
 use std::io;
 use std::io::Read;
+use yubikey::certificate::PublicKeyInfo;
 use yubikey::*;
 
 pub struct Yubi;
@@ -19,4 +20,12 @@ impl Yubi {
     }
 
     // TODO
+    pub fn info() -> Serial {
+        Yubi::auto_yk().unwrap().serial()
+    }
+
+    pub fn generate() -> Result<PublicKeyInfo> {
+        let yubikey = Yubi::auto_yk().unwrap();
+        // yubikey::piv::generate(&mut yubikey, slot, algorithm, pin_policy, touch_policy)
+    }
 }

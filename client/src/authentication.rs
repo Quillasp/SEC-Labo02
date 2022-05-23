@@ -1,10 +1,12 @@
-use crate::connection::Connection;
+use crate::{connection::Connection, yubi::Yubi};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 use read_input::prelude::*;
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
+use user::User;
+use validation::{Email, Password};
 
 /// `Authenticate` enum is used to perform:
 /// -   User
@@ -45,10 +47,19 @@ impl Authenticate {
     }
 
     fn register(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-        let email = input::<String>().msg("Enter your email: ").get();
-        let password = input::<String>().msg("Enter your password: ").get();
+        let ykey = Yubi::info();
 
-        connection.send(&User { email, password })
+        let email = input::<Email>().msg("Enter your email: ").get();
+        let password = input::<Password>().msg("Enter your password: ").get();
+
+        println!("{:?}", ykey);
+
+        connection.send(&User {
+            email,
+            password,
+            switch_2fa: true,
+            yk_info: Vec::new(),
+        })
     }
 
     fn authenticate(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
@@ -58,10 +69,4 @@ impl Authenticate {
     fn reset_password(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
         Ok(()) // TODO
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct User {
-    pub email: String,
-    pub password: String,
 }

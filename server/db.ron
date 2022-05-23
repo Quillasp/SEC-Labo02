@@ -1,0 +1,16 @@
+(
+    data: {
+        ("e.e.e."): (
+            email: ("e.e.e."),
+            password: ("e.e.e."),
+            switch_2fa: false,
+            yk_info: [],
+        ),
+        ("e.e."): (
+            email: ("e.e."),
+            password: ("e.e."),
+            switch_2fa: false,
+            yk_info: [],
+        ),
+    },
+)

@@ -1,8 +1,9 @@
-use crate::authentication::User;
 use rustbreak::{deser::Ron, FileDatabase};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
+use user::User;
+use validation::Email;
 
 lazy_static! {
     static ref DB: FileDatabase<Database, Ron> =
@@ -11,7 +12,7 @@ lazy_static! {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Database {
-    data: HashMap<String, User>,
+    data: HashMap<Email, User>,
 }
 
 impl Database {
@@ -20,7 +21,7 @@ impl Database {
         Ok(DB.save()?)
     }
 
-    pub fn get(email: &str) -> Result<Option<User>, Box<dyn Error>> {
+    pub fn get(email: &Email) -> Result<Option<User>, Box<dyn Error>> {
         Ok(match DB.borrow_data()?.data.get(email) {
             Some(user) => Some(user.clone()),
             None => None,

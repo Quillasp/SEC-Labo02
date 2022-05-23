@@ -1,12 +1,12 @@
+mod action;
 mod authentication;
 mod connection;
-mod action;
 mod yubi;
 
-use read_input::prelude::*;
+use crate::action::Action;
 use crate::authentication::Authenticate;
 use crate::connection::Connection;
-use crate::action::Action;
+use read_input::prelude::*;
 
 const SERVER_IP: &str = "127.0.0.1:8080";
 
@@ -23,9 +23,9 @@ fn main() {
 
             match action.perform(&mut connection) {
                 Ok(_) => break,
-                Err(e) => eprintln!("Authentication failed with following errors: {}\n", e)
+                Err(e) => eprintln!("Authentication failed with following errors: {}\n", e),
             };
-        };
+        }
 
         println!("\n[[ Authentication success ]]\n");
 
@@ -34,8 +34,12 @@ fn main() {
             let action = input::<Action>().msg("Please select: ").get();
 
             match action.perform(&mut connection) {
-                Ok(end) => if !end { break },
-                Err(e) => eprintln!("Operation failed with following errors: {}\n", e)
+                Ok(end) => {
+                    if !end {
+                        break;
+                    }
+                }
+                Err(e) => eprintln!("Operation failed with following errors: {}\n", e),
             };
         }
 

@@ -1,9 +1,9 @@
-use serde::{Serialize, Deserialize};
 use crate::connection::Connection;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 use strum::IntoEnumIterator;
-use strum_macros::{EnumString, EnumIter};
+use strum_macros::{EnumIter, EnumString};
 
 /// `Action` enum is used to perform logged operations:
 /// -   Enable/Disable 2fa authentication
@@ -12,13 +12,15 @@ pub enum Action {
     #[strum(serialize = "Enable/Disable 2FA", serialize = "1")]
     Switch2FA,
     #[strum(serialize = "Exit", serialize = "2")]
-    Logout
+    Logout,
 }
 
 impl Action {
     pub fn display() {
         let mut actions = Action::iter();
-        for i in 1..=actions.len() { println!("{}.\t{:?}", i, actions.next().unwrap()); }
+        for i in 1..=actions.len() {
+            println!("{}.\t{:?}", i, actions.next().unwrap());
+        }
     }
 
     pub fn perform(&self, connection: &mut Connection) -> Result<bool, Box<dyn Error>> {
@@ -26,7 +28,7 @@ impl Action {
 
         match self {
             Action::Switch2FA => Action::switch_2fa(),
-            Action::Logout => Ok(false)
+            Action::Logout => Ok(false),
         }
     }
 
