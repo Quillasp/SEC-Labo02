@@ -2,7 +2,7 @@ use rustbreak::{deser::Ron, FileDatabase};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
-use user::User;
+use utils::User;
 use validation::Email;
 
 lazy_static! {

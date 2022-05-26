@@ -1,5 +1,5 @@
 [package]
-name = "user"
+name = "utils"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,10 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+ecdsa = "0.12.4"
+p256 = "0.9"
+argon2 = "0.4"
+rand_core = { version = "0.6", features = ["std"] }
 
 [dependencies.validation]
 path = "../validation"

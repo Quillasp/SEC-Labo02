@@ -1,6 +1,7 @@
+use read_input::prelude::*;
 use std::io;
 use std::io::Read;
-use yubikey::certificate::PublicKeyInfo;
+use x509::SubjectPublicKeyInfo;
 use yubikey::*;
 
 pub struct Yubi;
@@ -24,19 +25,17 @@ impl Yubi {
         Yubi::auto_yk().unwrap()
     }
 
-    pub fn generate() -> Result<PublicKeyInfo> {
-        let mut yubikey = Yubi::auto_yk().unwrap();
-        let slot_id = yubikey::piv::SlotId::Authentication;
-        let algorithm_id = yubikey::piv::AlgorithmId::EccP256;
-        let pin_policy = yubikey::PinPolicy::Once;
-        let touch_policy = yubikey::TouchPolicy::Never;
+    pub fn generate() -> Result<Vec<u8>> {
+        let mut yubikey = Yubi::auto_yk()?;
 
-        yubikey::piv::generate(
+        yubikey.authenticate(MgmKey::default())?;
+        Ok(piv::generate(
             &mut yubikey,
-            slot_id,
-            algorithm_id,
-            pin_policy,
-            touch_policy,
-        )
+            piv::SlotId::Authentication,
+            piv::AlgorithmId::EccP256,
+            PinPolicy::Always,
+            TouchPolicy::Never,
+        )?
+        .public_key())
     }
 }

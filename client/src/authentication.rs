@@ -5,7 +5,7 @@ use std::error::Error;
 use read_input::prelude::*;
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
-use user::User;
+use utils::{RegisterData, ServerMessage, User};
 use validation::{Email, Password};
 
 /// `Authenticate` enum is used to perform:
@@ -47,33 +47,32 @@ impl Authenticate {
     }
 
     fn register(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-        let ykey = Yubi::info();
+        println!("\n\n<< Please register yourself >>\n");
 
-        let email = input::<Email>().msg("Enter your email: ").get();
-        let password = input::<Password>().msg("Enter your password: ").get();
+        let email = input::<Email>().msg("- Email: ").get();
+        let password = input::<Password>().msg("- Password: ").get();
 
-        println!(
-            "YubiKey Serial : {:?}, version {:?}",
-            ykey.serial(),
-            ykey.version()
-        );
+        let yubikey = Yubi::generate()?;
 
-        let yubikey_pub_info = match Yubi::generate() {
-            Ok(y) => y,
-            Err(e) => return Err(Box::new(e)),
-        };
-
-        println!("YubiKey Public Info : {:?}", yubikey_pub_info);
-
-        connection.send(&User {
+        connection.send(&RegisterData {
             email,
             password,
-            switch_2fa: true,
-            yk_info: Vec::new(),
-        })
+            yubikey,
+        })?;
+
+        let server_message: ServerMessage = connection.receive()?;
+        if !server_message.success {
+            return Err(server_message.message.into());
+        }
+        println!("okok");
+        Ok(())
     }
 
     fn authenticate(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
+        println!("<< Please authenticate yourself >>");
+
+        let email = input::<Email>().msg("- Email: ").get();
+        let password = input::<Password>().msg("- Password: ").get();
         Ok(()) // TODO
     }
 

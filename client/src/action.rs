@@ -1,6 +1,7 @@
 use crate::connection::Connection;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use utils::Switch2FA;
 
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
@@ -27,12 +28,18 @@ impl Action {
         connection.send(self)?;
 
         match self {
-            Action::Switch2FA => Action::switch_2fa(),
+            Action::Switch2FA => Action::switch_2fa(connection),
             Action::Logout => Ok(false),
         }
     }
 
-    fn switch_2fa() -> Result<bool, Box<dyn Error>> {
-        Ok(true) // TODO
+    fn switch_2fa(connection: &mut Connection) -> Result<bool, Box<dyn Error>> {
+        let switch_2fa: utils::Switch2FA = connection.receive()?;
+        if switch_2fa.two_f_a {
+            println!("2FA enabled!");
+        } else {
+            println!("2FA disabled!");
+        }
+        Ok(true)
     }
 }
