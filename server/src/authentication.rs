@@ -1,7 +1,10 @@
 use crate::{connection::Connection, database::Database};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use utils::{RegisterData, ServerMessage, User};
+use utils::{
+    crypto::{generate_random_128_bits, hmac_256},
+    ChallengeData, EmailData, HmacData, RegisterData, ServerMessage, ServerMessage2FA, User,
+};
 
 /// `Authenticate` enum is used to perform:
 /// -   Authentication
@@ -59,11 +62,52 @@ impl Authenticate {
         Database::insert(&user).map(|_| Some(user))
     }
 
-    fn reset_password(connection: &mut Connection) -> Result<Option<User>, Box<dyn Error>> {
+    fn authenticate(connection: &mut Connection) -> Result<Option<User>, Box<dyn Error>> {
+        let email_data: EmailData = connection.receive()?;
+
+        let mut user = User::default();
+        let mut salt: String = user.salt;
+        let mut valid: bool;
+
+        match Database::get(&email_data.email)? {
+            Some(u) => {
+                salt = u.salt.clone();
+                valid = true;
+                user = u;
+            }
+            None => valid = false,
+        }
+
+        let challenge = generate_random_128_bits();
+
+        connection.send(&ChallengeData { salt, challenge })?;
+
+        let hmac = match hmac_256(&challenge, &user.hash_password) {
+            Ok(hmac) => hmac,
+            Err(e) => return Err(e.into()),
+        };
+
+        let hmac_data: HmacData = connection.receive()?;
+
+        if hmac_data.hmac != hmac || !valid {
+            connection.send(&ServerMessage2FA {
+                message: "C'est faux!".to_string(),
+                success: false,
+                two_f_a: false,
+            })?;
+            return Ok(None);
+        } else {
+            connection.send(&ServerMessage2FA {
+                message: "bien ouej".to_string(),
+                success: true,
+                two_f_a: true,
+            })?;
+        }
+
         Ok(None) // TODO
     }
 
-    fn authenticate(connection: &mut Connection) -> Result<Option<User>, Box<dyn Error>> {
+    fn reset_password(connection: &mut Connection) -> Result<Option<User>, Box<dyn Error>> {
         Ok(None) // TODO
     }
 }

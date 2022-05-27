@@ -20,11 +20,6 @@ impl Yubi {
         }
     }
 
-    // TODO
-    pub fn info() -> YubiKey {
-        Yubi::auto_yk().unwrap()
-    }
-
     pub fn generate() -> Result<Vec<u8>> {
         let mut yubikey = Yubi::auto_yk()?;
 

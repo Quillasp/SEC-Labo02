@@ -42,3 +42,9 @@ impl FromStr for Password {
         }
     }
 }
+
+impl Default for Password {
+    fn default() -> Self {
+        Password("12*#abCD".to_string())
+    }
+}

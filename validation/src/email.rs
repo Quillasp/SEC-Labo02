@@ -29,3 +29,9 @@ impl FromStr for Email {
         }
     }
 }
+
+impl Default for Email {
+    fn default() -> Self {
+        Email("email@email.email".to_string())
+    }
+}

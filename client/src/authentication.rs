@@ -1,11 +1,14 @@
 use crate::{connection::Connection, yubi::Yubi};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
+use std::{error::Error, f32::consts::E};
 
 use read_input::prelude::*;
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
-use utils::{RegisterData, ServerMessage, User};
+use utils::{
+    crypto::{hash_password, hmac_256},
+    ChallengeData, EmailData, HmacData, RegisterData, ServerMessage, ServerMessage2FA,
+};
 use validation::{Email, Password};
 
 /// `Authenticate` enum is used to perform:
@@ -64,7 +67,7 @@ impl Authenticate {
         if !server_message.success {
             return Err(server_message.message.into());
         }
-        println!("okok");
+
         Ok(())
     }
 
@@ -72,7 +75,24 @@ impl Authenticate {
         println!("<< Please authenticate yourself >>");
 
         let email = input::<Email>().msg("- Email: ").get();
-        let password = input::<Password>().msg("- Password: ").get();
+        let password = input::<Password>().msg("- Password:").get();
+        connection.send(&EmailData { email })?;
+
+        let challenge_data: ChallengeData = connection.receive()?;
+
+        let hash_password = hash_password(&password, &challenge_data.salt).unwrap();
+
+        match hmac_256(&challenge_data.challenge, &hash_password) {
+            Ok(hmac) => connection.send(&HmacData { hmac })?,
+            Err(e) => return Err(e.into()),
+        }
+
+        let server_message: ServerMessage2FA = connection.receive()?;
+        if !server_message.success {
+            return Err(server_message.message.into());
+        } else {
+            println!("{}", server_message.message);
+        }
         Ok(()) // TODO
     }
 

@@ -1,9 +1,8 @@
 use crate::{connection::Connection, database::Database};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use utils::Switch2FA;
 
-use utils::User;
+use utils::*;
 
 /// `Action` enum is used to perform logged operations:
 /// -   Enable/Disable 2fa authentication
@@ -26,10 +25,10 @@ impl Action {
 
         Database::insert(&user)?;
 
-        connection.send(&utils::Switch2FA {
-            two_f_a: user.two_f_a,
-        })?;
-
-        Ok(true)
+        connection
+            .send(&Switch2FA {
+                two_f_a: user.two_f_a,
+            })
+            .map(|_| true)
     }
 }
