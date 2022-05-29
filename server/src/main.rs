@@ -10,6 +10,7 @@ extern crate lazy_static;
 use crate::action::Action;
 use crate::authentication::Authenticate;
 use crate::connection::Connection;
+use simple_logger::SimpleLogger;
 use std::net::TcpListener;
 use std::thread;
 
@@ -28,9 +29,14 @@ fn handle_client(mut connection: Connection) {
 const SERVER_IP: &str = "127.0.0.1:8080";
 
 fn main() {
+    SimpleLogger::new().env().init().unwrap();
+
+    log::info!("Staring server");
+
     let listener = TcpListener::bind(SERVER_IP).unwrap();
 
-    println!("Server is UP.\nServing clients on {}", SERVER_IP);
+    log::info!("Server is UP.");
+    log::info!("Serving clients on {}", SERVER_IP);
 
     for stream in listener.incoming() {
         match stream {

@@ -21,6 +21,7 @@ impl Action {
     }
 
     fn switch_2fa(user: &mut User, connection: &mut Connection) -> Result<bool, Box<dyn Error>> {
+        log::info!("Changing 2FA account status");
         user.two_f_a = !user.two_f_a;
 
         Database::insert(&user)?;

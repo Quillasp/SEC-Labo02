@@ -6,6 +6,17 @@ use std::{collections::BTreeMap, error::Error};
 use envfile::EnvFile;
 use lettre::{transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
 
+/// Using an env file with the following properties.
+///
+/// You must have an application password already set up from the email provider
+/// of your choice.
+///
+/// ```
+/// username=your@email.address
+/// password=application password
+/// relay=relay.address
+/// from=from@email.address
+/// ```
 pub fn get_mailer_info() -> Result<BTreeMap<String, String>, Box<dyn Error>> {
     let envfile = EnvFile::new(&Path::new("./example.env"))?;
 
