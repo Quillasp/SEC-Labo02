@@ -6,6 +6,10 @@ use validation::{Email, Password};
 pub struct RegisterData {
     pub email: Email,
     pub password: Password,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct YubiKeyPubInfoData {
     pub yubikey: Vec<u8>,
 }
 
@@ -23,6 +27,11 @@ pub struct ChallengeData {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HmacData {
     pub hmac: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ClientMessage {
+    pub message: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

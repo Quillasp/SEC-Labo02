@@ -4,6 +4,8 @@ use std::io::Read;
 use x509::SubjectPublicKeyInfo;
 use yubikey::*;
 
+use validation::Pin;
+
 pub struct Yubi;
 
 impl Yubi {
@@ -22,7 +24,6 @@ impl Yubi {
 
     pub fn generate() -> Result<Vec<u8>> {
         let mut yubikey = Yubi::auto_yk()?;
-
         yubikey.authenticate(MgmKey::default())?;
         Ok(piv::generate(
             &mut yubikey,
@@ -32,5 +33,16 @@ impl Yubi {
             TouchPolicy::Never,
         )?
         .public_key())
+    }
+
+    pub fn sign(bytes: &[u8]) -> Result<Buffer> {
+        let mut yubikey = Yubi::auto_yk()?;
+        yubikey.verify_pin(input::<Pin>().msg("- PIN: ").get().as_bytes())?;
+        Ok(piv::sign_data(
+            &mut yubikey,
+            bytes,
+            piv::AlgorithmId::EccP256,
+            piv::SlotId::Authentication,
+        )?)
     }
 }

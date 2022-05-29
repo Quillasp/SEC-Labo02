@@ -787,7 +787,9 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "ecdsa",
  "lazy_static",
+ "p256",
  "rustbreak",
  "serde",
  "utils",

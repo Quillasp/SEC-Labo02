@@ -31,11 +31,17 @@ pub fn generate_random_128_bits() -> [u8; 16] {
     dest
 }
 
-pub fn hmac_256(input: &[u8; 16], key: &str) -> Result<Vec<u8>, String> {
+pub fn hmac_sha256(input: &[u8], key: &str) -> Result<Vec<u8>, String> {
     let mut mac = match HmacSha256::new_from_slice(key.as_bytes()) {
         Ok(mac) => mac,
         Err(e) => return Err(e.to_string()),
     };
     mac.update(input);
     Ok(mac.finalize().into_bytes()[..].to_vec())
+}
+
+pub fn hash_sha256(input: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    hasher.finalize()[..].to_vec()
 }

@@ -6,8 +6,9 @@ use read_input::prelude::*;
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
 use utils::{
-    crypto::{hash_password, hmac_256},
-    ChallengeData, EmailData, HmacData, RegisterData, ServerMessage, ServerMessage2FA,
+    crypto::{hash_password, hash_sha256, hmac_sha256},
+    ChallengeData, ClientMessage, EmailData, HmacData, RegisterData, ServerMessage,
+    ServerMessage2FA, YubiKeyPubInfoData,
 };
 use validation::{Email, Password};
 
@@ -52,37 +53,33 @@ impl Authenticate {
     fn register(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
         println!("\n\n<< Please register yourself >>\n");
 
-        let email = input::<Email>().msg("- Email: ").get();
-        let password = input::<Password>().msg("- Password: ").get();
-
-        let yubikey = Yubi::generate()?;
-
         connection.send(&RegisterData {
-            email,
-            password,
-            yubikey,
+            email: input::<Email>().msg("- Email: ").get(),
+            password: input::<Password>().msg("- Password: ").get(),
         })?;
 
-        let server_message: ServerMessage = connection.receive()?;
-        if !server_message.success {
-            return Err(server_message.message.into());
-        }
+        Authenticate::receive_server_message(connection)?;
+
+        connection.send(&YubiKeyPubInfoData {
+            yubikey: Yubi::generate()?,
+        })?;
+
+        Authenticate::receive_server_message(connection)?;
 
         Ok(())
     }
 
     fn authenticate(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-        println!("<< Please authenticate yourself >>");
+        println!("\n\n<< Please authenticate yourself >>\n");
 
-        let email = input::<Email>().msg("- Email: ").get();
-        let password = input::<Password>().msg("- Password:").get();
-        connection.send(&EmailData { email })?;
+        connection.send(&EmailData {
+            email: input::<Email>().msg("- Email: ").get(),
+        })?;
+        let password = input::<Password>().msg("- Password: ").get();
 
         let challenge_data: ChallengeData = connection.receive()?;
-
         let hash_password = hash_password(&password, &challenge_data.salt).unwrap();
-
-        match hmac_256(&challenge_data.challenge, &hash_password) {
+        match hmac_sha256(&challenge_data.challenge, &hash_password) {
             Ok(hmac) => connection.send(&HmacData { hmac })?,
             Err(e) => return Err(e.into()),
         }
@@ -90,13 +87,31 @@ impl Authenticate {
         let server_message: ServerMessage2FA = connection.receive()?;
         if !server_message.success {
             return Err(server_message.message.into());
-        } else {
+        } else if !server_message.two_f_a {
             println!("{}", server_message.message);
+            return Ok(());
         }
+        println!("{}", server_message.message);
+
+        connection.send(&ClientMessage {
+            message: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
+        })?;
+
+        Authenticate::receive_server_message(connection)?;
         Ok(()) // TODO
     }
 
     fn reset_password(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
         Ok(()) // TODO
+    }
+
+    fn receive_server_message(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
+        let server_message: ServerMessage = connection.receive()?;
+        if server_message.success {
+            println!("{}", server_message.message);
+        } else {
+            return Err(server_message.message.into());
+        }
+        Ok(())
     }
 }

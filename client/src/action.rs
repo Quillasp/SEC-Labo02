@@ -36,9 +36,9 @@ impl Action {
     fn switch_2fa(connection: &mut Connection) -> Result<bool, Box<dyn Error>> {
         let switch_2fa: utils::Switch2FA = connection.receive()?;
         if switch_2fa.two_f_a {
-            println!("2FA enabled!");
+            println!("\n2FA enabled!\n");
         } else {
-            println!("2FA disabled!");
+            println!("\n2FA disabled!\n");
         }
         Ok(true)
     }
