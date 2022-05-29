@@ -3,7 +3,7 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Messages {
+pub enum Strings {
     AuthSuccess,
     AuthTo2FA,
     EmailMessage,
@@ -14,7 +14,7 @@ pub enum Messages {
     YubiKeyPubInfo,
 }
 
-impl fmt::Display for Messages {
+impl fmt::Display for Strings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AuthSuccess => write!(f, "Authentication success"),

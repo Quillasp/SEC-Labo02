@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use utils::{
     crypto::{generate_random_128_bits, generate_salt, hash_password, hmac_sha256},
-    ChallengeData, ClientStringMessage, ClientVecMessage, EmailData, Error as UtilsError, HmacData,
-    Messages, RegisterData, ServerMessage, ServerMessage2FA, User, YubiKeyPubInfoData,
+    ChallengeData, ClientMessage, EmailData, Error as UtilsError, HmacData, RegisterData,
+    ServerMessage, ServerMessage2FA, Strings, User, YubiKeyData,
 };
 use uuid::Uuid;
 
@@ -44,9 +44,9 @@ impl Authenticate {
             })?;
             return Err(Box::new(UtilsError::UserAlreadyExist));
         } else {
-            println!("{}", Messages::YubiKeyPubInfo);
+            println!("{}", Strings::YubiKeyPubInfo);
             connection.send(&ServerMessage {
-                message: Messages::YubiKeyPubInfo.to_string(),
+                message: Strings::YubiKeyPubInfo.to_string(),
                 success: true,
             })?;
         }
@@ -57,7 +57,7 @@ impl Authenticate {
         let hash_password = hash_password(&register_data.password, &salt).unwrap();
 
         println!("Getting YubiKey public info");
-        let yubikey: YubiKeyPubInfoData = connection.receive()?;
+        let yubikey: YubiKeyData = connection.receive()?;
 
         println!("Entering user in the Database");
         let user = User {
@@ -69,7 +69,7 @@ impl Authenticate {
         };
 
         connection.send(&ServerMessage {
-            message: Messages::UserRegistered.to_string(),
+            message: Strings::UserRegistered.to_string(),
             success: true,
         })?;
         Database::insert(&user).map(|_| Some(user))
@@ -113,29 +113,29 @@ impl Authenticate {
             return Err(UtilsError::AuthFailed.into());
         } else if user.two_f_a {
             connection.send(&ServerMessage2FA {
-                message: Messages::AuthTo2FA.to_string(),
+                message: Strings::AuthTo2FA.to_string(),
                 success: true,
                 two_f_a: true,
             })?;
         } else {
             connection.send(&ServerMessage2FA {
-                message: Messages::AuthSuccess.to_string(),
+                message: Strings::AuthSuccess.to_string(),
                 success: true,
                 two_f_a: false,
             })?;
             return Ok(Some(user));
         }
         println!("Getting user yubikey public info");
-        let client_message: ClientVecMessage = connection.receive()?;
+        let client_message: YubiKeyData = connection.receive()?;
 
         match Authenticate::verify_yubikey_challenge(
             &user.yubikey,
-            &client_message.message,
+            &client_message.yubikey,
             &challenge,
         ) {
             Ok(_) => {
                 connection.send(&ServerMessage {
-                    message: Messages::AuthSuccess.to_string(),
+                    message: Strings::AuthSuccess.to_string(),
                     success: true,
                 })?;
                 Ok(Some(user))
@@ -164,7 +164,7 @@ impl Authenticate {
         } else {
             challenge = generate_random_128_bits();
             connection.send(&ServerMessage {
-                message: Messages::AuthTo2FA.to_string(),
+                message: Strings::AuthTo2FA.to_string(),
                 success: true,
             })?;
 
@@ -174,16 +174,16 @@ impl Authenticate {
             })?;
         }
         let user = user.unwrap();
-        let client_message: ClientVecMessage = connection.receive()?;
+        let client_message: YubiKeyData = connection.receive()?;
 
         match Authenticate::verify_yubikey_challenge(
             &user.yubikey,
-            &client_message.message,
+            &client_message.yubikey,
             &challenge,
         ) {
             Ok(_) => {
                 connection.send(&ServerMessage {
-                    message: Messages::EmailSent.to_string(),
+                    message: Strings::EmailSent.to_string(),
                     success: true,
                 })?;
             }
@@ -198,10 +198,10 @@ impl Authenticate {
         println!("Sending email to requested username");
         let token = Authenticate::send_token(
             &user.email,
-            Messages::EmailSubject.to_string().as_str(),
-            Messages::EmailMessage.to_string().as_str(),
+            Strings::EmailSubject.to_string().as_str(),
+            Strings::EmailMessage.to_string().as_str(),
         )?;
-        let token_user: ClientStringMessage = connection.receive()?;
+        let token_user: ClientMessage = connection.receive()?;
 
         if token != token_user.message {
             connection.send(&ServerMessage {
@@ -211,12 +211,12 @@ impl Authenticate {
             return Err(UtilsError::UuidFailed.into());
         } else {
             connection.send(&ServerMessage {
-                message: Messages::UuidSuccess.to_string(),
+                message: Strings::UuidSuccess.to_string(),
                 success: true,
             })?;
         }
 
-        let new_password: ClientStringMessage = connection.receive()?;
+        let new_password: ClientMessage = connection.receive()?;
 
         println!("Generating the salt");
         let salt = generate_salt();

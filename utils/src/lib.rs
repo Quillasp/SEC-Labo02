@@ -1,13 +1,13 @@
 pub mod crypto;
 mod data;
 mod errors;
-mod messages;
+mod strings;
 mod user;
 
 pub use data::{
-    ChallengeData, ClientStringMessage, ClientVecMessage, EmailData, HmacData, RegisterData,
-    ServerMessage, ServerMessage2FA, Switch2FA, YubiKeyPubInfoData,
+    ChallengeData, ClientMessage, EmailData, HmacData, RegisterData, ServerMessage,
+    ServerMessage2FA, Switch2FA, YubiKeyData,
 };
 pub use errors::Error;
-pub use messages::Messages;
+pub use strings::Strings;
 pub use user::User;

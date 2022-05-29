@@ -7,8 +7,8 @@ use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
 use utils::{
     crypto::{hash_password, hash_sha256, hmac_sha256},
-    ChallengeData, ClientStringMessage, ClientVecMessage, EmailData, HmacData, RegisterData,
-    ServerMessage, ServerMessage2FA, YubiKeyPubInfoData,
+    ChallengeData, ClientMessage, EmailData, HmacData, RegisterData, ServerMessage,
+    ServerMessage2FA, YubiKeyData,
 };
 use validation::{Email, Password, Token};
 
@@ -60,7 +60,7 @@ impl Authenticate {
 
         Authenticate::receive_server_message(connection)?;
 
-        connection.send(&YubiKeyPubInfoData {
+        connection.send(&YubiKeyData {
             yubikey: Yubi::generate()?,
         })?;
 
@@ -93,8 +93,8 @@ impl Authenticate {
         }
         println!("{}", server_message.message);
 
-        connection.send(&ClientVecMessage {
-            message: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
+        connection.send(&YubiKeyData {
+            yubikey: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
         })?;
 
         Authenticate::receive_server_message(connection)?;
@@ -112,20 +112,23 @@ impl Authenticate {
 
         let challenge_data: ChallengeData = connection.receive()?;
 
-        connection.send(&ClientVecMessage {
-            message: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
+        connection.send(&YubiKeyData {
+            yubikey: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
         })?;
 
         Authenticate::receive_server_message(connection)?;
 
-        connection.send(&ClientStringMessage {
+        connection.send(&ClientMessage {
             message: input::<Token>().msg("- Token: ").get().to_string(),
         })?;
 
         Authenticate::receive_server_message(connection)?;
 
-        connection.send(&ClientStringMessage {
-            message: input::<Password>().msg("- New password").get().to_string(),
+        connection.send(&ClientMessage {
+            message: input::<Password>()
+                .msg("- New password: ")
+                .get()
+                .to_string(),
         })?;
 
         Ok(()) // TODO

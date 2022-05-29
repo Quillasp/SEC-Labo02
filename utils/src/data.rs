@@ -9,7 +9,7 @@ pub struct RegisterData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct YubiKeyPubInfoData {
+pub struct YubiKeyData {
     pub yubikey: Vec<u8>,
 }
 
@@ -30,12 +30,7 @@ pub struct HmacData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ClientVecMessage {
-    pub message: Vec<u8>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ClientStringMessage {
+pub struct ClientMessage {
     pub message: String,
 }
 
