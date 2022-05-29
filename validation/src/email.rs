@@ -15,6 +15,14 @@ lazy_static! {
 #[repr(transparent)]
 pub struct Email(String);
 
+impl std::ops::Deref for Email {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug)]
 pub struct EmailError;
 

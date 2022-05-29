@@ -1,5 +1,5 @@
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
 use hmac::{Hmac, Mac};
@@ -17,11 +17,6 @@ pub fn hash_password(s: &str, salt: &str) -> Result<String, argon2::password_has
 
 pub fn generate_salt() -> String {
     SaltString::generate(&mut OsRng).to_string()
-}
-
-pub fn verifiy_password(s: &str, hash: &str) -> Result<(), argon2::password_hash::Error> {
-    let parsed_hash = PasswordHash::new(hash)?;
-    Argon2::default().verify_password(s.as_bytes(), &parsed_hash)
 }
 
 pub fn generate_random_128_bits() -> [u8; 16] {

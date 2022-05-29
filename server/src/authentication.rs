@@ -1,13 +1,14 @@
-use crate::{connection::Connection, database::Database};
+use crate::{connection::Connection, database::Database, mailer::send_mail};
 use ecdsa::signature::Verifier;
 use p256::EncodedPoint;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use utils::{
-    crypto::{generate_random_128_bits, hmac_sha256},
-    ChallengeData, ClientMessage, EmailData, Error as UtilsError, HmacData, Messages, RegisterData,
-    ServerMessage, ServerMessage2FA, User, YubiKeyPubInfoData,
+    crypto::{generate_random_128_bits, generate_salt, hash_password, hmac_sha256},
+    ChallengeData, ClientStringMessage, ClientVecMessage, EmailData, Error as UtilsError, HmacData,
+    Messages, RegisterData, ServerMessage, ServerMessage2FA, User, YubiKeyPubInfoData,
 };
+use uuid::Uuid;
 
 /// `Authenticate` enum is used to perform:
 /// -   Authentication
@@ -43,6 +44,7 @@ impl Authenticate {
             })?;
             return Err(Box::new(UtilsError::UserAlreadyExist));
         } else {
+            println!("{}", Messages::YubiKeyPubInfo);
             connection.send(&ServerMessage {
                 message: Messages::YubiKeyPubInfo.to_string(),
                 success: true,
@@ -50,9 +52,9 @@ impl Authenticate {
         }
 
         println!("Generating the salt");
-        let salt = utils::crypto::generate_salt();
+        let salt = generate_salt();
         println!("Hashing the password");
-        let hash_password = utils::crypto::hash_password(&register_data.password, &salt).unwrap();
+        let hash_password = hash_password(&register_data.password, &salt).unwrap();
 
         println!("Getting YubiKey public info");
         let yubikey: YubiKeyPubInfoData = connection.receive()?;
@@ -108,7 +110,7 @@ impl Authenticate {
                 success: false,
                 two_f_a: false,
             })?;
-            return Ok(None);
+            return Err(UtilsError::AuthFailed.into());
         } else if user.two_f_a {
             connection.send(&ServerMessage2FA {
                 message: Messages::AuthTo2FA.to_string(),
@@ -124,24 +126,27 @@ impl Authenticate {
             return Ok(Some(user));
         }
         println!("Getting user yubikey public info");
-        let client_message: ClientMessage = connection.receive()?;
+        let client_message: ClientVecMessage = connection.receive()?;
 
-        if Authenticate::verify_yubikey_challenge(
+        match Authenticate::verify_yubikey_challenge(
             &user.yubikey,
             &client_message.message,
             &challenge,
-        )? {
-            connection.send(&ServerMessage {
-                message: Messages::AuthSuccess.to_string(),
-                success: true,
-            })?;
-            Ok(Some(user))
-        } else {
-            connection.send(&ServerMessage {
-                message: UtilsError::TwoFAFailed.to_string(),
-                success: false,
-            })?;
-            Ok(None)
+        ) {
+            Ok(_) => {
+                connection.send(&ServerMessage {
+                    message: Messages::AuthSuccess.to_string(),
+                    success: true,
+                })?;
+                Ok(Some(user))
+            }
+            Err(e) => {
+                connection.send(&ServerMessage {
+                    message: UtilsError::TwoFAFailed.to_string(),
+                    success: false,
+                })?;
+                Err(e.into())
+            }
         }
     }
 
@@ -168,32 +173,71 @@ impl Authenticate {
                 challenge,
             })?;
         }
-        let client_message: ClientMessage = connection.receive()?;
+        let user = user.unwrap();
+        let client_message: ClientVecMessage = connection.receive()?;
 
-        if Authenticate::verify_yubikey_challenge(
-            &user.unwrap().yubikey,
+        match Authenticate::verify_yubikey_challenge(
+            &user.yubikey,
             &client_message.message,
             &challenge,
-        )? {
+        ) {
+            Ok(_) => {
+                connection.send(&ServerMessage {
+                    message: Messages::EmailSent.to_string(),
+                    success: true,
+                })?;
+            }
+            Err(e) => {
+                connection.send(&ServerMessage {
+                    message: UtilsError::TwoFAFailed.to_string(),
+                    success: false,
+                })?;
+                return Err(e.into());
+            }
+        }
+        println!("Sending email to requested username");
+        let token = Authenticate::send_token(
+            &user.email,
+            Messages::EmailSubject.to_string().as_str(),
+            Messages::EmailMessage.to_string().as_str(),
+        )?;
+        let token_user: ClientStringMessage = connection.receive()?;
+
+        if token != token_user.message {
             connection.send(&ServerMessage {
-                message: Messages::EmailSent.to_string(),
-                success: true,
-            })?;
-        } else {
-            connection.send(&ServerMessage {
-                message: UtilsError::TwoFAFailed.to_string(),
+                message: UtilsError::UuidFailed.to_string(),
                 success: false,
             })?;
-            return Err(Box::new(UtilsError::TwoFAFailed));
+            return Err(UtilsError::UuidFailed.into());
+        } else {
+            connection.send(&ServerMessage {
+                message: Messages::UuidSuccess.to_string(),
+                success: true,
+            })?;
         }
-        Ok(None) // TODO
+
+        let new_password: ClientStringMessage = connection.receive()?;
+
+        println!("Generating the salt");
+        let salt = generate_salt();
+        println!("Hashing the password");
+        let hash_password = hash_password(&new_password.message, &salt).unwrap();
+
+        let user = User {
+            email: user.email,
+            salt,
+            hash_password,
+            two_f_a: user.two_f_a,
+            yubikey: user.yubikey,
+        };
+        Database::insert(&user).map(|_| Some(user))
     }
 
     fn verify_yubikey_challenge(
         yubikey: &Vec<u8>,
         message: &Vec<u8>,
         challenge: &[u8],
-    ) -> Result<bool, Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let encoded_point: EncodedPoint = match EncodedPoint::from_bytes(yubikey) {
             Ok(encoded_point) => encoded_point,
             Err(e) => return Err(e.into()),
@@ -203,8 +247,15 @@ impl Authenticate {
 
         println!("Verifying yubikey");
         match verifying_key.verify(&challenge, &signature) {
-            Ok(_) => Ok(true),
-            Err(_) => Ok(false),
+            Ok(_) => Ok(()),
+            Err(e) => Err(e.into()),
         }
+    }
+
+    fn send_token(to: &str, subject: &str, message: &str) -> Result<String, Box<dyn Error>> {
+        let id = Uuid::new_v4().as_hyphenated().to_string();
+        let message = format!("{} {}", message, id);
+        send_mail(to, subject, &message)?;
+        Ok(id)
     }
 }

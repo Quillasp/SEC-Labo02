@@ -30,8 +30,13 @@ pub struct HmacData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ClientMessage {
+pub struct ClientVecMessage {
     pub message: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ClientStringMessage {
+    pub message: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

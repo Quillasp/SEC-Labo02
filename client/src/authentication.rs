@@ -7,10 +7,10 @@ use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};
 use utils::{
     crypto::{hash_password, hash_sha256, hmac_sha256},
-    ChallengeData, ClientMessage, EmailData, HmacData, RegisterData, ServerMessage,
-    ServerMessage2FA, YubiKeyPubInfoData,
+    ChallengeData, ClientStringMessage, ClientVecMessage, EmailData, HmacData, RegisterData,
+    ServerMessage, ServerMessage2FA, YubiKeyPubInfoData,
 };
-use validation::{Email, Password};
+use validation::{Email, Password, Token};
 
 /// `Authenticate` enum is used to perform:
 /// -   User
@@ -93,7 +93,7 @@ impl Authenticate {
         }
         println!("{}", server_message.message);
 
-        connection.send(&ClientMessage {
+        connection.send(&ClientVecMessage {
             message: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
         })?;
 
@@ -112,8 +112,20 @@ impl Authenticate {
 
         let challenge_data: ChallengeData = connection.receive()?;
 
-        connection.send(&ClientMessage {
+        connection.send(&ClientVecMessage {
             message: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
+        })?;
+
+        Authenticate::receive_server_message(connection)?;
+
+        connection.send(&ClientStringMessage {
+            message: input::<Token>().msg("- Token: ").get().to_string(),
+        })?;
+
+        Authenticate::receive_server_message(connection)?;
+
+        connection.send(&ClientStringMessage {
+            message: input::<Password>().msg("- New password").get().to_string(),
         })?;
 
         Ok(()) // TODO

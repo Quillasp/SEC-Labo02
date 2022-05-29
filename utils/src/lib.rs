@@ -5,8 +5,8 @@ mod messages;
 mod user;
 
 pub use data::{
-    ChallengeData, ClientMessage, EmailData, HmacData, RegisterData, ServerMessage,
-    ServerMessage2FA, Switch2FA, YubiKeyPubInfoData,
+    ChallengeData, ClientStringMessage, ClientVecMessage, EmailData, HmacData, RegisterData,
+    ServerMessage, ServerMessage2FA, Switch2FA, YubiKeyPubInfoData,
 };
 pub use errors::Error;
 pub use messages::Messages;
