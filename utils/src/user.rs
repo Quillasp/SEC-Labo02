@@ -1,6 +1,6 @@
 use crate::crypto::generate_salt;
 use serde::{Deserialize, Serialize};
-use validation::{Email, Password};
+use validation::Email;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {

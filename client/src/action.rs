@@ -1,7 +1,6 @@
 use crate::connection::Connection;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use utils::Switch2FA;
 
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString};

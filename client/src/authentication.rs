@@ -1,6 +1,6 @@
 use crate::{connection::Connection, yubi::Yubi};
 use serde::{Deserialize, Serialize};
-use std::{error::Error, f32::consts::E};
+use std::error::Error;
 
 use read_input::prelude::*;
 use strum::IntoEnumIterator;
@@ -102,13 +102,27 @@ impl Authenticate {
     }
 
     fn reset_password(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
+        println!("\n\n<< Reset password >>\n");
+
+        connection.send(&EmailData {
+            email: input::<Email>().msg("- Email: ").get(),
+        })?;
+
+        Authenticate::receive_server_message(connection)?;
+
+        let challenge_data: ChallengeData = connection.receive()?;
+
+        connection.send(&ClientMessage {
+            message: Yubi::sign(&hash_sha256(&challenge_data.challenge))?.to_vec(),
+        })?;
+
         Ok(()) // TODO
     }
 
     fn receive_server_message(connection: &mut Connection) -> Result<(), Box<dyn Error>> {
         let server_message: ServerMessage = connection.receive()?;
         if server_message.success {
-            println!("{}", server_message.message);
+            println!("Server message: {}", server_message.message);
         } else {
             return Err(server_message.message.into());
         }

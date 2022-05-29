@@ -1,5 +1,5 @@
 use crate::{connection::Connection, database::Database};
-use ecdsa::signature::{DigestVerifier, Verifier};
+use ecdsa::signature::Verifier;
 use p256::EncodedPoint;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -126,33 +126,85 @@ impl Authenticate {
         println!("Getting user yubikey public info");
         let client_message: ClientMessage = connection.receive()?;
 
-        let encoded_point: EncodedPoint = match EncodedPoint::from_bytes(&user.yubikey) {
-            Ok(encoded_point) => encoded_point,
-            Err(e) => return Err(e.into()),
-        };
-        let verifying_key = p256::ecdsa::VerifyingKey::from_encoded_point(&encoded_point)?;
-        let signature = p256::ecdsa::Signature::from_der(&client_message.message)?;
-
-        println!("Verifying yubikey");
-        match verifying_key.verify(&challenge, &signature) {
-            Ok(_) => {
-                connection.send(&ServerMessage {
-                    message: Messages::AuthSuccess.to_string(),
-                    success: true,
-                })?;
-                Ok(Some(user))
-            }
-            Err(_) => {
-                connection.send(&ServerMessage {
-                    message: UtilsError::TwoFAFailed.to_string(),
-                    success: false,
-                })?;
-                Ok(None)
-            }
+        if Authenticate::verify_yubikey_challenge(
+            &user.yubikey,
+            &client_message.message,
+            &challenge,
+        )? {
+            connection.send(&ServerMessage {
+                message: Messages::AuthSuccess.to_string(),
+                success: true,
+            })?;
+            Ok(Some(user))
+        } else {
+            connection.send(&ServerMessage {
+                message: UtilsError::TwoFAFailed.to_string(),
+                success: false,
+            })?;
+            Ok(None)
         }
     }
 
     fn reset_password(connection: &mut Connection) -> Result<Option<User>, Box<dyn Error>> {
+        println!("---Reset password process---\nGetting user email");
+        let email_data: EmailData = connection.receive()?;
+        let user = Database::get(&email_data.email)?;
+        let mut challenge: [u8; 16] = [0; 16];
+        if user.is_none() {
+            connection.send(&ServerMessage {
+                message: UtilsError::InvalidEmail.to_string(),
+                success: false,
+            })?;
+            return Err(Box::new(UtilsError::InvalidEmail));
+        } else {
+            challenge = generate_random_128_bits();
+            connection.send(&ServerMessage {
+                message: Messages::AuthTo2FA.to_string(),
+                success: true,
+            })?;
+
+            connection.send(&ChallengeData {
+                salt: String::new(),
+                challenge,
+            })?;
+        }
+        let client_message: ClientMessage = connection.receive()?;
+
+        if Authenticate::verify_yubikey_challenge(
+            &user.unwrap().yubikey,
+            &client_message.message,
+            &challenge,
+        )? {
+            connection.send(&ServerMessage {
+                message: Messages::EmailSent.to_string(),
+                success: true,
+            })?;
+        } else {
+            connection.send(&ServerMessage {
+                message: UtilsError::TwoFAFailed.to_string(),
+                success: false,
+            })?;
+            return Err(Box::new(UtilsError::TwoFAFailed));
+        }
         Ok(None) // TODO
+    }
+
+    fn verify_yubikey_challenge(
+        yubikey: &Vec<u8>,
+        message: &Vec<u8>,
+        challenge: &[u8],
+    ) -> Result<bool, Box<dyn Error>> {
+        let encoded_point: EncodedPoint = match EncodedPoint::from_bytes(yubikey) {
+            Ok(encoded_point) => encoded_point,
+            Err(e) => return Err(e.into()),
+        };
+        let verifying_key = p256::ecdsa::VerifyingKey::from_encoded_point(&encoded_point)?;
+        let signature = p256::ecdsa::Signature::from_der(message)?;
+
+        println!("Verifying yubikey");
+        match verifying_key.verify(&challenge, &signature) {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
     }
 }
